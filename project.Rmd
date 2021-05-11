@@ -1,0 +1,626 @@
+---
+title: "World Happiness Report during year 2015 ~ year 2020"
+author: "Mark Wu, Ruhani Arora, Abhishek Grewal, Yumian Cui"
+date: "05 May, 2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+<style type="text/css">
+header { color: blue; }
+</style>
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(fivethirtyeight)
+library(factoextra)
+library(tree)
+library(maps)
+library(ggpubr)
+library(ggplot2)
+library(magrittr)
+# if sourced, set working directory to file location
+# added tryCatch in case knitting runs into error
+tryCatch({
+  if(Sys.getenv('RSTUDIO')=='1'){
+    setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+  }}, error = function(e){}
+)
+
+# install necessary packages
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load(knitr,tidyverse)
+
+knitr::opts_chunk$set(tidy=FALSE,strip.white=FALSE,fig.align="center",comment=" #")
+
+```
+
+<header><h1 align="center"> Introduction </h1></header>
+
+This data contains the Happiness Score for 153 countries along with the factors used to explain the score.T he happiness score of a country is dependent on the following factors : GDP per capita,, Healthy Life Expectancy ,Social support, Freedom to make life choices, Generosity, Corruption Perception, and Residual error which is given in the data and on the basis of which countries are provided with the rankings with Finland being at the top.
+We believe that this data source is interesting because happiness is one of the most important factor for growth in any country. By studying these factors it can help us gain knowledge and insight about the important factors that influence the happiness index of a country. Apart from the happiness index, the data gives information about the GDP per capita, Healthy Life Expectancy ,Social support, Freedom to make life choices, Generosity, and Corruption Perception on the basis of which we can see much progress a country is making. Following the trend and patterns of the factors which creates a positive growth in the happiness can help counties at the bottom of the list to make improvements in the factors affecting the happiness index.Since we are studying the data of 2020, the year when the Covid-19 pandemic hit the world it can provide a lot more detailed about how countries manage to maintain their happiness index.
+In years prior to 2020 or COVID, happiness score is expected to increase year by year with GDP per capita increasing in all countries, and GDP per capita plays a bigger role in affecting the happiness index in those developed countries(high latitudes). And in 2020, accounting for all the rest of factors determining the happiness score, GDP per capita is seen as a less significant predictor because GDP per capita growth for developed countries is also assumably slowed down, we believe people tend to migrate to countries with greater happiness scores and per capita GDP in search of better opportunities and countries with more people migrating where harder hit by COVID.
+
+<header><h1 align="center"> Data </h1></header>
+
+1. https://www.kaggle.com/mathurinache/world-happiness-report?select=2015.csv
+
+2. https://www.kaggle.com/mathurinache/world-happiness-report?select=2016.csv
+
+3. https://www.kaggle.com/mathurinache/world-happiness-report?select=2017.csv
+
+4. https://www.kaggle.com/mathurinache/world-happiness-report?select=2018.csv
+
+5. https://www.kaggle.com/mathurinache/world-happiness-report?select=2019.csv
+
+6. https://www.kaggle.com/mathurinache/world-happiness-report?select=2020.csv
+
+7. https://www.kaggle.com/tanuprabhu/population-by-country-2020
+
+First six dataset credit to original author: John Helliwell, Richard Layard, Jeffrey D. Sachs, and Jan Emmanuel De Neve.
+
+Last dataset credit to original author: Tanu N Prabhu
+
+First we did the data cleaning and separate in 5 group based on happiness rank in each interval 30 ranks in each interval.
+```{r, include=FALSE}
+data_2015 = read.csv("2015.csv")
+data_2015=data_2015%>%
+select(Country,Happiness.Rank,Happiness.Score,GDP.per.Capita=Economy..GDP.per.Capita.,Health.Life.Expectancy=Health..Life.Expectancy.,Freedom,Trust.Government.Corruption=Trust..Government.Corruption.,Generosity)%>%
+mutate(year=rep(2015,nrow(data_2015)),level = case_when(
+    Happiness.Rank <= 30~"First",
+    Happiness.Rank %in% c(31:60)~"Second",
+    Happiness.Rank %in% c(61:90)~"Third",
+    Happiness.Rank%in% c(91:120)~"Fourth",
+    120<Happiness.Rank ~"Fifth"
+  ),year=as.factor(year),level=factor(level,levels=c("First","Second","Third","Fourth","Fifth")))
+```
+
+```{r, include=FALSE}
+data_2016 = read.csv("2016.csv")
+data_2016=data_2016%>%
+select(Country,Happiness.Rank,Happiness.Score,GDP.per.Capita=Economy..GDP.per.Capita.,Health.Life.Expectancy=Health..Life.Expectancy.,Freedom,Trust.Government.Corruption=Trust..Government.Corruption.,Generosity)%>%
+mutate(year=rep(2016,nrow(data_2016)),level = case_when(
+    Happiness.Rank <= 30~"First",
+    Happiness.Rank %in% c(31:60)~"Second",
+    Happiness.Rank %in% c(61:90)~"Third",
+    Happiness.Rank%in% c(91:120)~"Fourth",
+    120<Happiness.Rank ~"Fifth"
+  ),year=as.factor(year),level=factor(level,levels=c("First","Second","Third","Fourth","Fifth")))
+```
+
+```{r, include=FALSE}
+data_2017 = read.csv("2017.csv")
+data_2017=data_2017%>%
+select(Country,Happiness.Rank,Happiness.Score,GDP.per.Capita=Economy..GDP.per.Capita.,Health.Life.Expectancy=Health..Life.Expectancy.,Freedom,Trust.Government.Corruption=Trust..Government.Corruption.,Generosity)%>%
+mutate(year=rep(2017,nrow(data_2017)),level = case_when(
+    Happiness.Rank <= 30~"First",
+    Happiness.Rank %in% c(31:60)~"Second",
+    Happiness.Rank %in% c(61:90)~"Third",
+    Happiness.Rank%in% c(91:120)~"Fourth",
+    120<Happiness.Rank ~"Fifth"
+  ),year=as.factor(year),level=factor(level,levels=c("First","Second","Third","Fourth","Fifth")))
+```
+
+```{r, include=FALSE}
+data_2018 = read.csv("2018.csv")
+data_2018[data_2018 == "N/A"]  <- NA
+data_2018=data_2018%>%
+na.omit(data_2018)
+data_2018$Trust.Government.Corruption<-as.numeric(data_2018$Perceptions.of.corruption)
+
+data_2018=data_2018%>%  
+select(Country=Country.or.region,Happiness.Rank=Overall.rank,Happiness.Score=Score,GDP.per.Capita=GDP.per.capita,
+         Health.Life.Expectancy=Healthy.life.expectancy,Freedom=Freedom.to.make.life.choices,
+         Trust.Government.Corruption,Generosity)%>%
+  mutate(year=rep(2018,nrow(data_2018)),level = case_when(
+    Happiness.Rank <= 30~"First",
+    Happiness.Rank %in% c(31:60)~"Second",
+    Happiness.Rank %in% c(61:90)~"Third",
+    Happiness.Rank%in% c(91:120)~"Fourth",
+    120<Happiness.Rank ~"Fifth"
+  ),year=as.factor(year),level=factor(level,levels=c("First","Second","Third","Fourth","Fifth")))
+```
+
+```{r, include=FALSE}
+data_2019 = read.csv("2019.csv")
+data_2019=data_2019%>%
+select(Country=Country.or.region,Happiness.Rank=Overall.rank,Happiness.Score=Score,GDP.per.Capita=GDP.per.capita,Health.Life.Expectancy=Healthy.life.expectancy,Freedom=Freedom.to.make.life.choices,Trust.Government.Corruption=Perceptions.of.corruption,Generosity)%>%
+mutate(year=rep(2019,nrow(data_2019)),level = case_when(
+    Happiness.Rank <= 30~"First",
+    Happiness.Rank %in% c(31:60)~"Second",
+    Happiness.Rank %in% c(61:90)~"Third",
+    Happiness.Rank%in% c(91:120)~"Fourth",
+    120<Happiness.Rank ~"Fifth"
+  ),year=as.factor(year),level=factor(level,levels=c("First","Second","Third","Fourth","Fifth")))
+```
+
+```{r, include=FALSE}
+data_2020 = read.csv("2020.csv")
+data_2020$Happiness.Rank[order(-data_2020$Ladder.score)] <- 1:nrow(data_2020)
+data_2020 = data_2020%>%
+select(Country=Country.name,Happiness.Rank,Happiness.Score=Ladder.score,GDP.per.Capita=Explained.by..Log.GDP.per.capita,Health.Life.Expectancy= Explained.by..Healthy.life.expectancy,Freedom=Explained.by..Freedom.to.make.life.choices,
+Trust.Government.Corruption=Explained.by..Perceptions.of.corruption,Generosity=Explained.by..Generosity)%>%
+mutate(year=rep(2020,nrow(data_2020)),level = case_when(
+    Happiness.Rank <= 30~"First",
+    Happiness.Rank %in% c(31:60)~"Second",
+    Happiness.Rank %in% c(61:90)~"Third",
+    Happiness.Rank%in% c(91:120)~"Fourth",
+    120<Happiness.Rank ~"Fifth"
+  ),year=as.factor(year),level=factor(level,levels=c("First","Second","Third","Fourth","Fifth")))
+  
+```
+
+```{r, include=FALSE}
+data = bind_rows(data_2015,data_2016,data_2017,data_2018,data_2019,data_2020)
+drop_na(data)
+```
+
+```{r, include=FALSE}
+data<-data %>%
+  rename(happiness_rank = Happiness.Rank,
+         happiness_score = Happiness.Score,
+         gdp = GDP.per.Capita,
+         life_expectancy = Health.Life.Expectancy,
+         freedom = Freedom,
+         trust = Trust.Government.Corruption,
+         generosity = Generosity)
+```
+
+```{r}
+head(data)
+```
+
+<header><h1 align="center">Methods </h1></header>
+
+1. Linear Regression
+2. Tree
+3. K means Clustering
+
+First,the reason why we use "Linear Regression Model" is that we want to predict the dependent variable (Happiness score) base on the predictors variable(GDP/captia,Life expectancy,Freedom, Trust, Generosity) and to see which is significant predictors of the outcome variable.
+
+Secondly,the reason why we use "Tree Model" is that we want to show the audience can easily understand the which predictor variable are more significant by observing the dendrogram.
+
+Third, the reason why we use "K-Means Clustering" is that it is hard to observe a definite pattern in the scatterplots, to get a better idea of how countries can be grouped, we tried to using the unsupervised learning method to group them.
+
+<header><h1 align="center">Results </h1></header>
+
+### Show the summary of happiness stat in each  year during 2015-2020  
+```{r, include=FALSE}
+data_x <- data %>% 
+  group_by(year) %>% 
+  summary(mean_x = mean(happiness_score))
+```
+
+```{r}
+data_x
+```
+
+
+### Show the summary of happiness score in 2015-2020 
+```{r, include=FALSE}
+happiness_stats <- data %>%
+  summarize(mean(happiness_score), median(happiness_score), 
+            sd(happiness_score), min(happiness_score),  max(happiness_score))
+```
+
+```{r}
+happiness_stats
+```
+
+### To show if the happiness score above or below the average
+```{r,include=FALSE}
+#each country mean of happiness score
+happy_avg <- data %>%
+  group_by(Country) %>%
+  summarize(happy_avg = mean(happiness_score)) %>%
+  as.data.frame()
+
+## Happiness Z score
+happy_avg$happiness_z <- round((happy_avg$happy_avg- 
+                                mean(happy_avg$happy_avg))/sd(happy_avg$happy_avg), 2)
+
+##See if above of below average
+happy_avg$happiness_type <- ifelse(happy_avg$happiness_z < 0, "below", "above")
+happy_avg <- happy_avg[order(happy_avg$happiness_z), ]
+happy_avg$Country <- factor(happy_avg$Country, levels = unique(happy_avg$Country))
+```
+
+```{r,echo=FALSE,fig.width=10,fig.height=11}
+
+happy_avg_graph <- ggplot(happy_avg, aes(x = Country, y = happiness_z, label = happiness_z)) +
+         geom_bar(stat = "identity", aes(fill = happiness_type)) +
+         scale_fill_manual(name="Happiness Score", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="paleVioletRed", "below"="thistle")) + 
+scale_x_discrete(guide = guide_axis(check.overlap = TRUE))+  
+         theme(axis.text.x = element_text(angle = 90)) +
+         labs(title = "Average of World Happiness 2015-2020", y = "happiness score") 
+
+happy_avg_graph
+```
+From our above graph,we order the country by happiness score, and we easily found that "Burndi" is the least happiest country during 2015~2020, and Finland is the happiest country during 2015~2020 through observing the plot.
+
+
+
+```{r, include=FALSE}
+bar_2020_top10 <- data_2020 %>% 
+  slice(1:10)
+```
+
+### The distribution of Top 10 in 2020
+```{r, echo=FALSE}
+ggplot(bar_2020_top10,aes(x=Country,Happiness.Score))+
+  geom_point()+
+  theme(axis.text.x = element_text(angle=45, vjust=0.6))
+```
+
+
+### Order the distribution of Top 10 in 2020
+```{r, echo=FALSE}
+ggplot(bar_2020_top10,aes(x=factor(Country,levels=Country),y=Happiness.Score))+
+  geom_bar(stat="identity",fill ="pink")+
+  theme(axis.text.x = element_text(angle=45, vjust=0.6))+
+  labs(x="Country",y="Happiness Score",title="Top10 Happiest Countries 2020")
+```
+
+```{r, echo=FALSE}
+
+happiness_bar2020 <- bar_2020_top10 %>%
+  pivot_longer(cols=c(GDP.per.Capita,Health.Life.Expectancy,Freedom,Trust.Government.Corruption), 
+               names_to = "category", values_to = "values") 
+ 
+ggplot(happiness_bar2020, mapping=aes(x=category, y=values, fill=Country))+
+  geom_col(position="dodge", color="black", size=0.25) +
+  theme(axis.text.x = element_text(angle =10)) +
+  xlab("Factors affecting Happiness Index")
+  
+```
+
+```{r, include=FALSE}
+bar_2020_low10 <-data_2020 %>% 
+  slice(143:153)
+```
+
+### The distribution of low 10 in 2020
+```{r, echo=FALSE}
+ggplot(bar_2020_low10,aes(x=Country,Happiness.Score))+
+  geom_point()+
+  theme(axis.text.x = element_text(angle=45, vjust=0.6))
+```
+
+### OrderThe distribution of low 10 in 2020
+```{r, echo=FALSE}
+ggplot(bar_2020_low10,aes(x=factor(Country,levels=Country),y=Happiness.Score))+
+  geom_bar(stat="identity",fill ="red")+
+  theme(axis.text.x = element_text(angle=45, vjust=0.6))+
+  labs(x="Country",y="Happiness Score",title="Lowest 10 Happiest Countries 2020")
+```
+
+```{r, echo=FALSE}
+happiness_bar2020_2 <- bar_2020_low10 %>%
+  pivot_longer(cols=c(GDP.per.Capita,Health.Life.Expectancy,Freedom,Trust.Government.Corruption), 
+               names_to = "category", values_to = "values") 
+ 
+ggplot(happiness_bar2020_2, mapping=aes(x=category, y=values, fill=Country))+
+  geom_col(position="dodge", color="black", size=0.25) +
+  theme(axis.text.x = element_text(angle =10)) +
+  xlab("Factors affecting Happiness Index")
+```
+
+After analyzing the happiness index of the world from the past 5 year we can come to this conclusion that GDP has the most impact on a country’s happiness score and rank.
+While plotting the graph of happiness score of top 10 countries and the bottom 10 countries, we can see that the countries in the list of top 10 have a high GDP followed by high life expectancy whereas countries on the bottom have low gpd value.
+
+### Show the distribution of happiness score by the 5 group in the world map 
+```{r, echo=FALSE,fig.width=16, fig.height=8}
+#https://www.datanovia.com/en/blog/how-to-create-a-map-using-ggplot2/
+fig15 =data_2015
+
+world <- map_data("world",region = data_2015$Country)%>%
+  select(Country=region,everything())
+fig15=fig15%>%
+full_join(world,fig15 , by = "Country")
+
+fig15<-ggplot(fig15, aes(long, lat, group = group))+
+  geom_polygon(aes(fill = level ), color = "white")+
+  ggtitle("2015 Distribution")+
+  xlab("Longitude")+ylab("Latitude")+ theme(plot.title = element_text(hjust = 0.5))
+
+
+fig16 =data_2016
+world <- map_data("world",region = data_2016$Country)%>%
+  select(Country=region,everything())
+fig16=fig16%>%
+full_join(world,fig16 , by = "Country")
+fig16<-ggplot(fig16, aes(long, lat, group = group))+
+  geom_polygon(aes(fill = level ), color = "white")+
+  ggtitle("2016 Distribution")+
+  xlab("Longitude")+ylab("Latitude")+ theme(plot.title = element_text(hjust = 0.5))
+
+fig17 =data_2017
+world <- map_data("world",region = data_2017$Country)%>%
+  select(Country=region,everything())
+fig17=fig17%>%
+full_join(world,fig17 , by = "Country")
+fig17<-ggplot(fig17, aes(long, lat, group = group))+
+  geom_polygon(aes(fill = level ), color = "white")+
+  ggtitle("2017 Distribution")+
+  xlab("Longitude")+ylab("Latitude")+ theme(plot.title = element_text(hjust = 0.5))
+
+fig18 =data_2018
+world <- map_data("world",region = data_2018$Country)%>%
+  select(Country=region,everything())
+fig18=fig18%>%
+full_join(world,fig18 , by = "Country")
+fig18<-ggplot(fig18, aes(long, lat, group = group))+
+  geom_polygon(aes(fill = level ), color = "white")+
+  ggtitle("2018 Distribution")+
+  xlab("Longitude")+ylab("Latitude")+ theme(plot.title = element_text(hjust = 0.5))
+
+fig19 =data_2019
+world <- map_data("world",region = data_2019$Country)%>%
+  select(Country=region,everything())
+fig19=fig19%>%
+full_join(world,fig19 , by = "Country")
+fig19<-ggplot(fig19, aes(long, lat, group = group))+
+  geom_polygon(aes(fill = level ), color = "white")+
+  ggtitle("2019 Distribution")+
+  xlab("Longitude")+ylab("Latitude")+ theme(plot.title = element_text(hjust = 0.5))
+
+fig20 =data_2020
+world <- map_data("world",region = data_2020$Country)%>%
+  select(Country=region,everything())
+fig20=fig20%>%
+full_join(world,fig20 , by = "Country")
+fig20<-ggplot(fig20, aes(long, lat, group = group))+
+  geom_polygon(aes(fill = level ), color = "white")+
+  ggtitle("2020 Distribution")+
+  xlab("Longitude")+ylab("Latitude")+ theme(plot.title = element_text(hjust = 0.5))
+
+
+ggarrange(fig15,fig16,fig17,fig18,fig19,fig20 ,
+          ncol =2, nrow = 3,common.legend = TRUE)
+```
+
+We can see the the development of happiness score in each country, we can obviously see that in the nations with High latitudes would always in the first level, which is the first 30 rank. Also, most of the African country are in the fifth rank, which showed that they're not really happy.
+
+### Using linear regression in years prior to 2020 or COVID
+```{r, include=FALSE} 
+prior_20=data%>%
+  filter(year!="2020")%>%
+  select(happiness_score,gdp,life_expectancy,freedom,trust,generosity)
+```
+
+```{r}
+lm1<-lm(happiness_score~.*.,prior_20)
+summary(lm1)
+```
+
+
+### According to the model in years prior to 2020 or COVID, what happiness score would I expect on average with a country that has gdp=1.5,life_expectancy=0.9,freedom=0.45,trust=0.3,generosity=0.5? 
+```{r}
+test_data =data.frame(gdp=1.5,life_expectancy=0.9,freedom=0.45,trust=0.3,generosity=0.5)
+predict(lm1,test_data)
+```
+
+```{r, echo=FALSE}
+fig=data%>%
+  filter(year!="2020")
+ggplot(fig,aes(x=gdp,y=happiness_score,color=level,shape=year))+
+geom_point()+
+xlab("GDP/capita")+ylab("Happiness Score")+
+ggtitle("The GDP/capita V.S. Happiness Score (30 rank in each interval)")+ 
+  guides(fill=guide_legend("my awesome title"))
+```
+
+From our linear model above, we found that the GDP factor are significant in this model, then we made a plot to see the The GDP/capita V.S. Happiness Score. However, we have strong evidenve to say that in years prior to 2020 or COVID, happiness score is expected to increase with GDP per capita increasing in all countries but not incresing year by year via the above plot.
+
+
+### Using linear regression in years in 2020
+```{r, echo=FALSE}
+in_20=data%>%
+  filter(year=="2020")%>%
+  select(happiness_score,gdp,life_expectancy,freedom,trust,generosity)
+
+```
+
+```{r}
+lm2<-lm(happiness_score~.*.,in_20)
+summary(lm2)
+```
+
+From our second linear model, in year 2020, we found that the GDP factor are NOT significant in this model anymore, which can support our thesis, GDP per capita is seen as a less significant predictor because GDP per capita growth is also assumably slowed down.
+
+### Multiple linear regression in year 2020
+```{r,echo=FALSE}
+
+hist(lm2$residuals)
+
+# qqnorm(lm2$residuals)
+# qqline(lm2$residuals)
+plot(lm2,which=1:2)
+```
+
+From the Residual VS Fitted, we can see the curve showed the linearity property.
+
+From normal QQ plot we can see that the residual is closed to the fitted line, which showed it satisfied the Normality property.
+
+### Tree
+```{r,echo=FALSE}
+# before 2020, analyze what are important factors affecting happiness score
+
+# regression tree
+
+
+data_before20 <- data %>%
+  filter(year != 2020)
+
+data_in20 <- data %>%
+  filter(year == 2020)
+
+tree.model_before20 <- tree(happiness_score ~ . -happiness_rank -Country -level -year, data=data_before20)
+plot(tree.model_before20)
+text(tree.model_before20, cex=.75)
+title("tree model 2015-2019")
+
+tree.model_in20 <- tree(happiness_score ~ . -happiness_rank -Country -level -year, data=data_in20)
+plot(tree.model_in20)
+text(tree.model_in20, cex=.75)
+title("tree model in 2020")
+
+```
+
+We think this two tree models fitting on data before 2020 and in 2020 corresponds to what has been stated in thesis that GDP is a less significant predictor in 2020 alone than in all previous years. In 2020, it seems that life expectancy is more significant. It may be reasonable to guess that this has to do with the Covid outbreak. 
+
+
+### Migration
+
+```{r,include=FALSE}
+pop2020 = read.csv("population_by_country_2020.csv")
+migration = pop2020%>%
+  mutate(Country = Country..or.dependency., m_rate = (Migrants..net./Population..2020.)*100)%>%
+  select(Country, Migrants..net., m_rate)
+## Migrants..net.-->This column represents the migrants of the countries
+## Migration rate
+```
+
+We imported a dataset displaying information about the population of each country. We where interested to know wether people tend to move to places where they can be more happy (measured by happiness score) and places that are more developed and provide more oppertunities (measured by per capita GDP). So we extracted the net migration (number of people entering the country - number of people leabing) for each country and merged it with per capita GDP and happiness score for each country.
+
+```{r, include=FALSE}
+score_gdp = data_2020%>%
+  select(Country, Happiness.Score, GDP.per.Capita)
+
+mig = merge(x = score_gdp, y = migration, by = c("Country"))
+mig
+```
+
+### Happiness score VS Migrants of the countries
+```{r,echo=FALSE}
+ggplot(mig,aes(x=Happiness.Score,y=Migrants..net., color = GDP.per.Capita))+
+ geom_point() +xlab("Happiness score")+ylab("Migrants of the countries")+
+  ggtitle("Happiness score VS Migrants of the countries")
+```
+
+To get an initial idea, we ploted the net migration and happiness score with color dimension as per capita GDP on a scatter plot. We observe that countries with happiness scores below five have negative net migrations staying mostly under 250000 people leaving with only 2 countries exceeding 250000 leaving. For Happiness scores between 5 and 6.5, it is really hard to observe any relevent patterns as there are many countries with negative and positive migration. Countries with happiness scores greater 6.5 all have positive migration with two countries exceeding 500000 and one country close to 1000000 incoming migrants. Countries appearing lighter blue corresponding to higher GDP are found towards the top of the plot signaling that more people want to move to more developed places where they are also likely to be more happy. Another interesting trend observerd is that countries with mass negative migrations exceeding or close to -250000 migrants have a per capita GDP close to 0.5 to 1.0 units.
+
+### Scaled migration data
+```{r,include=FALSE}
+scaledmig = mig%>%
+  mutate(scaled_hscore = (Happiness.Score - mean(Happiness.Score))/sd(Happiness.Score),
+         scaled_gdp = (GDP.per.Capita - mean(GDP.per.Capita))/sd(GDP.per.Capita),
+         scaled_mig = (Migrants..net. - mean(Migrants..net.))/sd(Migrants..net.),
+         scaled_pmig = (m_rate - mean(m_rate))/sd(m_rate))%>%
+  select(Country, scaled_hscore, scaled_gdp, scaled_mig, scaled_pmig)
+
+```
+
+There is no definitive pattern for instance we can not fit a linear or even polynomial eqaution to this plot. To get a better idea we used the unsupervised learning technique of kmeans clustering to group countries into cenrtain categories based on migration, GDPm and happiness score. Inorder to conduct kmeans, we must first scale the data to one standard deviation, which we have done above. 
+
+
+### Happiness score VS Migrants of the countries(Scaled version)
+```{r,echo=FALSE}
+ggplot(scaledmig,aes(x=scaled_hscore,y=scaled_pmig, color = scaled_gdp))+
+ geom_point() +xlab("Happiness score")+ylab("Percent Net Migration of the countries")+
+  ggtitle("Happiness score VS Migrants of the countries(Scaled version)")
+
+```
+
+In our previous plot, we used net migration which might have made highly populated countries seem like they lose a lot of people. Now we use what proportion of the total population accounts for the migrants. We also used the scaled version of our happiness score, percent migration, and percent per capita gdp. We now see a much more definitive pattern. Countries with a less than average happiness scores are losing proportions of their populations to migration with only a 4 countries exceeding the proportion of 1.75. Countries within one standard deviation of mean happiness score have both positive and negative migration with the number of positive migrations increaseing as happiness score increases. And a higher net positive migration exceeding or close the proportion of 1.75 is associated with really high per capita gdp. countries with scaled happiness score greater than 1 exclusively have net positive migrations ranging from 0 to 1.75 with one country exceeding 2.5. These countries tend to have the highest per capita GDP as well. 
+
+## Choose the optimal number of clusters
+
+```{r,echo=FALSE}
+### Silhouette
+best_c = scaledmig%>%select(-Country)
+fviz_nbclust(best_c, kmeans, method = "silhouette",k.max = 15) + theme_classic()
+
+```
+
+We use Silhouette method which computes the average silhouette of observations for different values of k since it gave the exact optimal number, this suggests an optimal of 3 clusters.
+
+### K means happiness score VS migration rate
+```{r,echo=FALSE}
+kmeans_m_vs_h = kmeans(scaledmig%>%select(scaled_hscore, scaled_pmig), centers = 3)
+
+fviz_cluster(kmeans_m_vs_h,data = scaledmig%>%select(scaled_hscore, scaled_pmig),
+             geom = c("point","text"), 
+             ellipse.type = "norm", main = "Happiness score/migration rate Cluster Plot", ggtheme = theme_classic())
+
+```
+
+The kmeans clusters of Happiness scores vs percent migration:
+
+1. The first group is of the countries with happiness scores greater than the mean happiness scores. We can see that the proportion of people that migrated to these countries is positive. This seems reasonable as people want to move to places where they can be happy. There are a handful of exceptions that have negative migration.
+
+2. The second group consists of countries with happiness scores less than average with few countries having a happiness slighlty greater than the average. This group is the most popular group and there is no definate migration pattern except that slightly more countries appear to have an postive migration.
+
+3. The third group has similar range of happiness scores to the second group, but these countries have extremely negative migration compared to other countries.
+
+What we can tell from these groups is that people are likely to move to countries with higher than average happy scores probably because of factors that happiness score accounts for like less corruption and better life expentancy. We need more information than just happiness score to predict migration of country which has less than average happyness score or a happiness slightly over the average. For future analysis we can look at education rates relating to more skilled workers to export, proximity to other countries which would make migration easy and cheap (so low income groups can afford it) or strictness of immigration laws.
+
+### K means GDP vs happiness score
+```{r,echo=FALSE}
+kmeans_m_vs_g = kmeans(scaledmig%>%select(scaled_gdp, scaled_mig), centers = 3)
+
+fviz_cluster(kmeans_m_vs_g,data = scaledmig%>%select(scaled_gdp, scaled_mig),              
+             geom = c("point","text"), 
+             ellipse.type = "norm", main = "GDP/happiness score Cluster Plot", ggtheme = theme_classic())
+
+```
+
+The kmeans clusters of Happiness scores vs percent migration:
+
+1. The first group is of countries ranges approximately from -0.2 to -0.25 standard deviations of the mean per capita GDP. Most countries in this group have negative migration, but there are still quite a few countries with positive migration. Almost all the countries in this group are within one standard deviation of the mean net migration.
+
+2. the second group consists of countries with more than average per capita GDP. A good majority of these countries have a positive migration with some countries going beyond 1 standard deviations.
+
+3. The third group consists of countries near the average per capita GDP. These countries have migration rates beyond -2 standard deviations.
+
+So, countries that have per capita GDP close to the average will have more people leaving to countries close to +1 standard deviation. We need to look at more factors to understand why this happens. An educated guess would be to assume countries near the average per capita GDP have good enough infrastructure to export their educated population to obtain highskill jobs in countries with higher per capita GDP.
+
+```{r,include=FALSE}
+#https://www.thebalance.com/what-is-the-ideal-gdp-growth-rate-3306017 (reference)
+
+gdp2020 = data_2020%>%
+  mutate(per_capita_gdp2020 = GDP.per.Capita)%>%
+  select(Country, per_capita_gdp2020)
+
+gdpbefore20 = data_before20%>%
+  group_by(Country)%>%
+  summarise(per_capita_gdp_prior20= mean(gdp))
+
+growth2020 = merge(x = gdpbefore20, y = gdp2020, by = c("Country"))
+growth2020 = merge(x = growth2020, y = migration, by = c("Country"))
+
+
+
+
+growth2020 = growth2020%>%
+  mutate(gdp_change = per_capita_gdp2020-per_capita_gdp_prior20, mig_activity = case_when(
+    Migrants..net. >= 15000 | Migrants..net. <= -15000~"Active",
+    Migrants..net. <= 15000 | Migrants..net. >= -15000~"Passive"
+  ), gdp_hit_hard = case_when(
+    gdp_change < mean(gdp_change)~TRUE,
+    gdp_change >= mean(gdp_change)~FALSE
+  ))
+
+
+# growth2020%>%filter(mig_activity == "Active")%>%summarise(mean(gdp_change))
+# growth2020%>%filter(mig_activity == "Passive")%>%summarise(mean(gdp_change))
+
+```
+
+```{r}
+growth2020%>%
+  group_by(mig_activity)%>%
+  summarise("mean_change" = mean(gdp_change))
+```
+
+It is logical to beleive that the more people are going to travel, the more covid is going to spread. Having looked at the the scatter plots of net migration we assumed countries with more than a net number 15000 people leaving or entering to be active countries. We calculated the mean GDP drop of these countries to be -0.0459 while that of passive countries to be -0.0397. We use the loss of per capita GDP for how hard a country is hit my COVID. From our results we conclude that countries with more migration are harder hit. We expected this difference to be much greater. Perhaps there are factors buffering this loss of GDP like crisis resistant economies for instance an economy with more factory jobs is likely to be hit harder than an economy with technical jobs that are easier to do remotely (Usually technical economies import and export more workers). For future analysis we would incorporate factors such as type of economy and health care.
+
+<header><h1 align="center"> Conclusion </h1></header>
+
+From our graphical analysis we were able to infer that GDP and happiness score has a strong correlation which was proved by the positive slope of the linear regression. This was further confirmed by the high correlation coefficient between these two factors indicating that the GDP has the greatest affect on a country's happiness score followed by health life expectancy. By looking at this analysis countries can decipher what makes it's citizens happy and prioritize the aspects that are required to be worked upon in order to make its citizens happiness and increase the happiness score.
+If happiness (happiness score), high opportunities and development (GDP) are so important to people, They will go out in search for it to other countries if they are not able to find. Our scatterplots and kmeans clusters show that people tend to migrate from countries with less than average happiness scores and GDP to countries with greater than average GDP and happiness scores. The general trend is that countries 2 standard deviations to the left of mean happiness scores lose a relatively large proportion of their population. As we come near the mean the there is no general trend, but 2 standard deviations to the right countries gain a large proportion of their population as migrants. We got curious as to how migration may effect the spread of COVID and found that the mean GDP drop of these countries to be -0.0459 while that of passive countries to be -0.0397. This shows countries with busier immigration and emigration where greater hit by COVID. However, we need more information than just happiness score to predict migration of country which has less than average happiness score or a happiness slightly over the average. For future analysis we can look at education rates relating to more skilled workers to export, proximity to other countries which would make migration easy and cheap (so low income groups can afford it) or strictness of immigration laws.
+Additionally, in order for any country to grow, the happiness of the citizens is required. Ultimately, we are able to attain the true pursuit of happiness, which we as human beings aim for.
+

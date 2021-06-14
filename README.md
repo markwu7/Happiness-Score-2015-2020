@@ -1,5 +1,8 @@
 # STAT340-Project
+
+
 Analyzing Happiness Score for 153 countries during 2015-2020 using Linear regression, Tree method, K means Clustering by R. Coursework of UW Madison SP 2021 STAT 340.
+
 ## Language: R
 ### Course Description:
 Teaches students to apply statistical methods to learn from data. Topics include one- and two-sample inference; an introduction to Bayesian inference and associated probability theory; linear and logistic regression models; the bootstrap; and cross-validation. Students use an integrated statistical computing environment to explore and analyze data, develop models, make inferences, and communicate results in a reproducible manner through a project-oriented approach to learning.
